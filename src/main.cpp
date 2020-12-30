@@ -41,7 +41,7 @@ struct intersectInfo {
 
 // Manage the scene geometry and calculate intersections
 class scene {
-public: // todo: private
+private: 
   std::vector<std::shared_ptr<triangle>> triBuffer;
   camera* cam;
 
@@ -49,6 +49,10 @@ public:
 
   size_t getGeoBufSz() {
     return triBuffer.size();
+  }
+
+  triangle* getTriangle(size_t index) {
+    return triBuffer[index].get();
   }
 
   // initialize scene
@@ -101,8 +105,8 @@ int main() {
   
   const glm::vec3 bgColor(0.f,0.f,0.f);
   const int displayPercentDivisor = 32;
-  const int xres = 128;
-  const int yres = 128;
+  const int xres = 1280;
+  const int yres = 720;
   float fov = 90.f;
   const float aspectRatio = (float)xres / (float)yres;
   const float near = 0.001f, far = 500.f;
@@ -113,6 +117,7 @@ int main() {
 
   material defaultMat;
   defaultMat.amb = glm::vec3(0.0025f);
+  defaultMat.specularColor = glm::vec3(0.5, 0.2, 0.2);
   defaultMat.diffuse = glm::vec3(0.5f, 0.f, 0.f);
 
   glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.0f, -2.30f));
@@ -123,17 +128,14 @@ int main() {
   geoModel dragon("../../../models/dragonHiRes.obj", defaultMat, model);
   sceneManager.loadObj(dragon);
 
-  auto& triBuffer = sceneManager.triBuffer;
-
-
   // Setup lights
   using lightPtr = std::shared_ptr<light>;
   lightPtr light1(std::make_shared<pointLight>(glm::vec3(0, 3, 1.2), 40.f));
-
   std::vector<lightPtr> lights;
   lights.push_back(light1);
 
   std::cout << "Loaded Scene: " << sceneManager.getGeoBufSz() << " faces." << std::endl;
+  // optional dump of obj file for debugging
   //obj.generateDumpFile("dump.txt");
 
   std::cout << "Rendering..." << std::endl;
@@ -149,23 +151,25 @@ int main() {
   std::for_each(std::execution::par_unseq, std::begin(xSeq), std::end(xSeq), [&](auto& x){
     for (auto y = 0; y < yres; y++) {
 
+      // Setup Ray parameters, direction and origin point
       glm::vec3 rayDir = cam.getRayDir(glm::vec2(x, y));
       glm::vec3 rayStartPos = cam.getPos();
 
-      size_t triIndex = 0;
-      intersectInfo intersectData;
-     
+      // Intersect camera ray with scene
+      intersectInfo intersectData;     
       sceneManager.rayTriIntersect(intersectData, rayStartPos, rayDir);
-      triIndex = intersectData.geoBufferTriIndex;
-
+      
       if (intersectData.hit) {
+        // get the hit triangle and calculate the fragment position of the intersection point
+        auto * hitTri = sceneManager.getTriangle(intersectData.geoBufferTriIndex);
         glm::vec3 fragPos = rayStartPos + intersectData.dist * rayDir;
+        
         // shade this pixel
-        glm::vec3 normal = triBuffer[triIndex]->getSurfNormal();
+        glm::vec3 normal = hitTri->getSurfNormal();
 
         glm::vec3 finalColor(0.f);
         for (auto& lig : lights) {
-          finalColor += lig->phong(fragPos, cam, *triBuffer[triIndex].get());
+          finalColor += lig->phong(fragPos, cam, *hitTri);
         }
 
         // reinhard tone mapping
