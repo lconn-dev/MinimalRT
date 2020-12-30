@@ -31,6 +31,13 @@ struct geoModel {
     : name(n), mat(&ma), model(mod){}
 };
 
+// Store information about a ray intersection
+struct intersectInfo {
+  bool hit = false;
+  float dist = 0.f;
+  size_t geoBufferTriIndex = 0;
+  glm::vec2 intersectCoord;
+};
 
 // Manage the scene geometry and calculate intersections
 class scene {
@@ -44,14 +51,6 @@ public:
     return triBuffer.size();
   }
 
-  // Store information about a ray intersection
-  struct intersectInfo {
-    bool hit = false;
-    float dist = 0.f;
-    size_t geoBufferTriIndex = 0;
-    glm::vec2 intersectCoord;
-  };
-  
   // initialize scene
   scene(camera& useCam) : cam(&useCam){}
 
@@ -74,28 +73,27 @@ public:
   }
 
   // Intersect a ray with the scene and store the result in an intersectInfo struct
-  bool rayTriIntersect(intersectInfo& result, glm::vec3 rayStart, glm::vec3 rayDir) {
+  bool rayTriIntersect(intersectInfo& result, glm::vec3 const& rayStart, glm::vec3 const& rayDir) {
 
     float nearestHit = FLT_MAX; // Set the nearest hit to max distance
 
     for (size_t t = 0; t < triBuffer.size(); t++) {
       const auto& tri = triBuffer[t].get();
-      float distance = 0.f;
+      //float distance = 0.f;
       if (glm::intersectRayTriangle(rayStart, rayDir, tri->v0, tri->v1, tri->v2, result.intersectCoord, result.dist)) {
-        if (distance > cam->nearP && distance < nearestHit) {
-          nearestHit = distance;
+        
+        if (result.dist > cam->nearP && result.dist < nearestHit) {
+          nearestHit = result.dist;
           result.geoBufferTriIndex = t;
           result.hit = true;
         }
       }
 
     }
+    return result.hit;
   }
-  
 
 };
-
-
 
 int main() {
   std::cout << "SimpleRT - Luke Connor 2020 " << std::endl;
@@ -103,8 +101,8 @@ int main() {
   
   const glm::vec3 bgColor(0.f,0.f,0.f);
   const int displayPercentDivisor = 32;
-  const int xres = 1280;
-  const int yres = 720;
+  const int xres = 128;
+  const int yres = 128;
   float fov = 90.f;
   const float aspectRatio = (float)xres / (float)yres;
   const float near = 0.001f, far = 500.f;
@@ -153,32 +151,15 @@ int main() {
 
       glm::vec3 rayDir = cam.getRayDir(glm::vec2(x, y));
       glm::vec3 rayStartPos = cam.getPos();
-      glm::vec2 intersection(0.f);
 
-      bool miss = true;
-      double nearestHit = DBL_MAX;
       size_t triIndex = 0;
-      glm::vec3 fragPos(0.f);
+      intersectInfo intersectData;
+     
+      sceneManager.rayTriIntersect(intersectData, rayStartPos, rayDir);
+      triIndex = intersectData.geoBufferTriIndex;
 
-      for (size_t t = 0; t < triBuffer.size(); t++) {
-
-        const auto& tri = triBuffer[t].get();
-
-        float distance = 0.f;
-        if (glm::intersectRayTriangle(rayStartPos, rayDir, tri->v0, tri->v1, tri->v2, intersection, distance)) {
-          // make sure the distance is positive so we dont render triangles behind the camera
-          //const double EPSILON = 0.0001;
-          if (distance > near && distance < nearestHit) {
-            nearestHit = distance;
-            fragPos = rayStartPos + distance * rayDir;
-            triIndex = t;
-            miss = false;
-          }
-        }
-
-      }
-
-      if (!miss) {
+      if (intersectData.hit) {
+        glm::vec3 fragPos = rayStartPos + intersectData.dist * rayDir;
         // shade this pixel
         glm::vec3 normal = triBuffer[triIndex]->getSurfNormal();
 
