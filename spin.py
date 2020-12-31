@@ -9,7 +9,7 @@ exePath = "/out/build/x64-Release/"
 exeName = "raytracer.exe"
 
 angle = 1
-maxAngle = 180
+maxAngle = 300
 
 #print ("Path: ", exePath)
 
@@ -20,5 +20,5 @@ while angle < maxAngle:
   proc.wait();
   copyfile(dir_path + exePath + "output.tga", dir_path + exePath + "frames/" + str(angle) + ".tga")
   # cool down for a few seconds
-  time.sleep(2)
+  time.sleep(0.5)
   angle += 15

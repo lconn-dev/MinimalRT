@@ -99,14 +99,23 @@ public:
 
 };
 
-int main() {
+int main(int argc, char** argv) {
+  
   std::cout << "SimpleRT - Luke Connor 2020 " << std::endl;
   std::cout << "Loading..." << std::endl;
   
+  float rotateArg = 0.f;
+  
+  // read commandline arguments
+  if(argc > 2)
+    rotateArg = std::atof(argv[2]);
+
+  std::cout << "rotarg:" << rotateArg << std::endl;
+  
   const glm::vec3 bgColor(0.f,0.f,0.f);
   const int displayPercentDivisor = 32;
-  const int xres = 1280;
-  const int yres = 720;
+  const int xres = 640;
+  const int yres = 480;
   float fov = 90.f;
   const float aspectRatio = (float)xres / (float)yres;
   const float near = 0.001f, far = 500.f;
@@ -118,14 +127,14 @@ int main() {
   material defaultMat;
   defaultMat.amb = glm::vec3(0.0025f);
   defaultMat.specularColor = glm::vec3(0.5, 0.2, 0.2);
-  defaultMat.diffuse = glm::vec3(0.5f, 0.f, 0.f);
+  defaultMat.diffuse = glm::vec3(1.f, 0.f, 0.f);
 
   glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.0f, -2.30f));
-  model = glm::rotate(model, glm::radians(5.f), glm::vec3(0.f, 1.f, 0.f));
-  glm::mat4 mvp = cam.projection * cam.view * model;
+  model = glm::rotate(model, glm::radians(rotateArg), glm::vec3(0.f, 1.f, 0.f));
+  glm::mat4 mvp = cam.view * model;
 
   scene sceneManager(cam);
-  geoModel dragon("../../../models/dragonHiRes.obj", defaultMat, model);
+  geoModel dragon("../../../models/dragonHiRes.obj", defaultMat, mvp);
   sceneManager.loadObj(dragon);
 
   // Setup lights
@@ -169,7 +178,7 @@ int main() {
 
         glm::vec3 finalColor(0.f);
         for (auto& lig : lights) {
-          finalColor += lig->phong(fragPos, cam, *hitTri);
+          finalColor += lig->phong(fragPos, cam, *hitTri, model);
         }
 
         // reinhard tone mapping
@@ -180,7 +189,7 @@ int main() {
         frame.write(x, y, color::rgb(mapped));
       } else {
         // create gradient for background
-        glm::vec3 grade = glm::mix(glm::vec3(0.5f), glm::vec3(0.0f), (float)y / yres);
+        glm::vec3 grade = glm::mix(glm::vec3(0.4), glm::vec3(0.f), (float)y / yres);
         frame.write(x, y, color::rgb(glm::vec3(grade)));
       }
      

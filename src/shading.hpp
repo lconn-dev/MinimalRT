@@ -31,10 +31,10 @@ public:
   light() : diffuseColor(1.f, 1.f, 1.f), position(0.f) {}
 
   virtual glm::vec3 lambert(
-    glm::vec3 const& fragPos, camera const& cam, triangle& tri) = 0;
+    glm::vec3 const& fragPos, camera const& cam, triangle& tri, glm::mat4 model) = 0;
 
   virtual glm::vec3 phong(
-    glm::vec3 const& fragPos, camera const& cam, triangle& tri) = 0;
+    glm::vec3 const& fragPos, camera const& cam, triangle& tri, glm::mat4 model) = 0;
 
 };
 
@@ -49,7 +49,7 @@ public:
 
   // todo add light intensity calculation
 
-  glm::vec3 lambert(glm::vec3 const& fragPos, camera const& cam, triangle& tri) override {
+  glm::vec3 lambert(glm::vec3 const& fragPos, camera const& cam, triangle& tri, glm::mat4 model) override {
     using vec3 = glm::vec3;
 
     //vec3 norm = tri.getSurfNormal();
@@ -57,7 +57,9 @@ public:
     barycentric(fragPos, tri.v0, tri.v1, tri.v2, u, v, w);
     vec3 norm = glm::normalize((tri.n0 * u) + (tri.n1 * v) + (tri.n2 * w));
 
-    float dot = glm::dot(norm, glm::normalize(this->position));
+    // normalize this->position?
+    //vec3 lightEyePos = (cam.view * model) * glm::vec4(this->position, 1);
+    float dot = glm::dot(norm, this->position);
     float diff = std::max(0.0f, dot);
     vec3 diffuse = diff * diffuseColor; // apply light color
 
@@ -67,7 +69,7 @@ public:
     return (diffuse + ambient) * tri.mat->diffuse;
   }
 
-  vec3 phong(glm::vec3 const& fragPos, camera const& cam, triangle& tri) override {
+  vec3 phong(glm::vec3 const& fragPos, camera const& cam, triangle& tri, glm::mat4 model) override {
     vec3 res(0.f);
     auto& viewPos = cam.position;
     vec3 viewDir(glm::normalize(viewPos - fragPos));
@@ -82,7 +84,7 @@ public:
     float specAngle = std::max(glm::dot(normal, halfwayDir), 0.f);
     specular = pow(specAngle, tri.mat->shine);
 
-    auto diffuse = lambert(fragPos, cam, tri);
+    auto diffuse = lambert(fragPos, cam, tri, model);
 
     res = diffuse + (specular * tri.mat->specularColor);
 
