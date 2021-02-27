@@ -114,8 +114,8 @@ int main(int argc, char** argv) {
   
   const glm::vec3 bgColor(0.f,0.f,0.f);
   const int displayPercentDivisor = 32;
-  const int xres = 640;
-  const int yres = 480;
+  const int xres = 320;
+  const int yres = 240;
   float fov = 90.f;
   const float aspectRatio = (float)xres / (float)yres;
   const float near = 0.001f, far = 500.f;
